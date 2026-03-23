@@ -1,0 +1,11 @@
+{
+  "name": "videospark-ops",
+  "version": "1.0.0",
+  "description": "Operational scripts for the VideoSpark backend",
+  "scripts": {
+    "migrate:supabase": "node scripts/run-supabase-migration.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}

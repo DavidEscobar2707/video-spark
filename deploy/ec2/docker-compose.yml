@@ -1,0 +1,45 @@
+services:
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ../../backend
+    restart: unless-stopped
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+    env_file:
+      - ${BACKEND_ENV_FILE:-../../backend/.env}
+    healthcheck:
+      test: ["CMD", "uv", "run", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  worker:
+    build:
+      context: ../../backend
+    restart: unless-stopped
+    command: ["uv", "run", "python", "-m", "app.worker"]
+    env_file:
+      - ${BACKEND_ENV_FILE:-../../backend/.env}
+    volumes:
+      - worker_tmp:/tmp/videospark-worker
+
+volumes:
+  caddy_data:
+  caddy_config:
+  worker_tmp:

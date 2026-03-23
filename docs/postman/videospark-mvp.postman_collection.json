@@ -1,0 +1,200 @@
+{
+  "info": {
+    "_postman_id": "7d998d6f-7d5d-4311-a71d-fbd5bad1e9d6",
+    "name": "VideoSpark MVP",
+    "description": "Postman collection for the active VideoSpark MVP backend routes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": "Basic backend health check."
+      },
+      "response": []
+    },
+    {
+      "name": "Calculate Credits",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"workflow\": \"script-to-video\",\n  \"source\": {\n    \"text\": \"Create a short ad for a creative studio. Hook the viewer in the first sentence, explain the offer clearly, and end with a strong call to action.\",\n    \"stylePrompt\": \"Cinematic editorial, clean product ad, premium lighting, modern social media style.\",\n    \"durationSeconds\": 20\n  },\n  \"media\": {\n    \"type\": \"ai-video\",\n    \"quality\": \"pro\",\n    \"density\": \"medium\"\n  },\n  \"voice\": {\n    \"enabled\": true,\n    \"language\": \"en\",\n    \"stability\": 0.4\n  },\n  \"captions\": {\n    \"enabled\": true,\n    \"preset\": \"karaoke\",\n    \"position\": \"bottom\"\n  },\n  \"render\": {\n    \"resolution\": \"720p\"\n  },\n  \"options\": {\n    \"promptTargetDuration\": 20\n  },\n  \"aspectRatio\": \"9:16\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/calculate-credits",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "calculate-credits"
+          ]
+        },
+        "description": "Estimate credits for the standard render flow."
+      },
+      "response": []
+    },
+    {
+      "name": "Create Render",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json && json.pid) {",
+              "  pm.collectionVariables.set('pid', json.pid);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"workflow\": \"script-to-video\",\n  \"source\": {\n    \"text\": \"Create a short ad for a creative studio. Hook the viewer in the first sentence, explain the offer clearly, and end with a strong call to action.\",\n    \"stylePrompt\": \"Cinematic editorial, clean product ad, premium lighting, modern social media style.\",\n    \"durationSeconds\": 20\n  },\n  \"media\": {\n    \"type\": \"ai-video\",\n    \"quality\": \"pro\",\n    \"density\": \"medium\"\n  },\n  \"voice\": {\n    \"enabled\": true,\n    \"language\": \"en\",\n    \"stability\": 0.4\n  },\n  \"captions\": {\n    \"enabled\": true,\n    \"preset\": \"karaoke\",\n    \"position\": \"bottom\"\n  },\n  \"render\": {\n    \"resolution\": \"720p\"\n  },\n  \"options\": {\n    \"promptTargetDuration\": 20\n  },\n  \"aspectRatio\": \"9:16\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/render",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "render"
+          ]
+        },
+        "description": "Create a standard prompt/script render job."
+      },
+      "response": []
+    },
+    {
+      "name": "Get Status",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/status?pid={{pid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "status"
+          ],
+          "query": [
+            {
+              "key": "pid",
+              "value": "{{pid}}"
+            }
+          ]
+        },
+        "description": "Poll job status using the latest pid saved from Create Render."
+      },
+      "response": []
+    },
+    {
+      "name": "List Projects",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/projects",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "projects"
+          ]
+        },
+        "description": "List projects for the authenticated user."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "bearerToken",
+      "value": ""
+    },
+    {
+      "key": "pid",
+      "value": ""
+    }
+  ]
+}
