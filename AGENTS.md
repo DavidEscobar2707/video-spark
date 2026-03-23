@@ -10,13 +10,22 @@
 ## Launch Scope
 - Supported endpoints:
   - `GET /health`
+  - `GET /api/v1/voices`
+  - `GET /api/v1/caption-presets`
+  - `POST /api/v1/generate-script`
   - `POST /api/v1/render`
+  - `POST /api/v1/image-story-render`
   - `POST /api/v1/calculate-credits`
   - `GET /api/v1/status`
   - `GET /api/v1/projects`
+  - `GET /api/v1/projects/{pid}`
+  - `POST /api/v1/projects/{pid}/rerender`
+  - `GET /api/v1/assets`
+  - `POST /api/v1/assets/upload`
 - Supported workflows:
   - `prompt-to-video`
   - `script-to-video`
+  - `image-story-to-video`
 - Supported media:
   - `ai-video`
 - Supported output:
@@ -31,6 +40,8 @@
   - direct browser calls to provider APIs
   - avatar-to-video
   - user-uploaded avatar selection
+  - partial scene regeneration
+  - direct social publishing
 
 ## Auth Contract
 - Production requires `AUTH_ENABLED=true`.
@@ -40,6 +51,8 @@
 
 ## Job Lifecycle
 - `/render` creates a server-owned project and job.
+- `/image-story-render` creates a server-owned image-story project and job.
+- `/projects/{pid}/rerender` creates a new job version under the same project.
 - The worker processes stages in this order:
   - `generating_script`
   - `voice_ready`
@@ -50,6 +63,15 @@
   - `completed` or `failed`
 - A job is only considered complete when `output_video_url` is present in `/status`.
 - `/status` returns browser-safe metadata only: stage label, worker id, clip count, and download readiness.
+
+## Editor And Assets
+- `GET /api/v1/projects/{pid}` returns project config, latest job, and recent versions for the editor screen.
+- `POST /api/v1/projects/{pid}/rerender` rerenders the whole video as a new version; it does not do per-scene regeneration.
+- `GET /api/v1/voices` provides the frontend voice picker.
+- `GET /api/v1/caption-presets` provides the supported caption designs.
+- `POST /api/v1/generate-script` provides an edit-first script suggestion flow.
+- `POST /api/v1/assets/upload` accepts image uploads as JSON with a base64 payload and stores them in Supabase Storage plus `public.assets`.
+- `GET /api/v1/assets` lists uploaded assets, optionally filtered by `projectId`.
 
 ## Deployment Invariants
 - Run exactly one worker for the MVP.

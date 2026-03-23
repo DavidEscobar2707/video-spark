@@ -188,3 +188,52 @@ def apply_image_story_defaults(config: ImageStoryRenderRequest) -> RenderRequest
             "aspectRatio": AspectRatio.NINE_SIXTEEN.value,
         }
     )
+
+
+def normalize_editor_payload(config: RenderRequest) -> RenderRequest:
+    if config.workflow == Workflow.IMAGE_STORY_TO_VIDEO:
+        validate_rerender_image_story_config(config)
+        return apply_rerender_defaults(config)
+    validate_launch_config(config)
+    return apply_launch_defaults(config)
+
+
+def validate_rerender_image_story_config(config: RenderRequest) -> None:
+    errors: list[str] = []
+
+    if config.workflow != Workflow.IMAGE_STORY_TO_VIDEO:
+        errors.append("Only image-story-to-video uses the editor image-story validation path.")
+
+    if config.aspect_ratio not in {None, AspectRatio.NINE_SIXTEEN, "9:16"}:
+        errors.append("Only 9:16 output is supported for image-story renders.")
+
+    if config.captions.enabled and not config.voice.enabled:
+        errors.append("Interactive captions require voice.enabled=true for image-story renders.")
+
+    if config.captions.preset not in SUPPORTED_CAPTION_PRESETS:
+        errors.append("Unsupported caption preset for image-story renders.")
+
+    if config.render.resolution not in SUPPORTED_RESOLUTIONS:
+        errors.append("Only 720p and 1080p are supported for image-story renders.")
+
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=errors,
+        )
+
+
+def apply_rerender_defaults(config: RenderRequest) -> RenderRequest:
+    settings = get_settings()
+    config.project_id = None
+
+    if config.voice.enabled and not config.voice.voice_id:
+        config.voice.voice_id = settings.default_voice_id
+    if config.voice.enabled and not config.voice.language:
+        config.voice.language = settings.default_voice_language
+    if config.captions.enabled:
+        config.captions.preset = normalize_caption_preset(config.captions.preset)
+    if not config.aspect_ratio:
+        config.aspect_ratio = AspectRatio.NINE_SIXTEEN
+
+    return config

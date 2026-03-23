@@ -27,6 +27,68 @@ def _project_title(payload: RenderRequest) -> str:
     return title or "Untitled video"
 
 
+def _project_upsert_payload(
+    *,
+    project_id: str,
+    tenant_id: str,
+    user_id: str,
+    payload: RenderRequest,
+    now: str,
+) -> dict[str, Any]:
+    return {
+        "id": project_id,
+        "tenant_id": tenant_id,
+        "user_id": user_id,
+        "title": _project_title(payload),
+        "status": "queued",
+        "workflow": payload.workflow.value,
+        "config": payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        "updated_at": now,
+    }
+
+
+def _project_update_payload(
+    *,
+    user_id: str,
+    payload: RenderRequest,
+    now: str,
+) -> dict[str, Any]:
+    project_payload = _project_upsert_payload(
+        project_id="",
+        tenant_id="",
+        user_id=user_id,
+        payload=payload,
+        now=now,
+    )
+    return {
+        "user_id": project_payload["user_id"],
+        "title": project_payload["title"],
+        "status": project_payload["status"],
+        "workflow": project_payload["workflow"],
+        "config": project_payload["config"],
+        "updated_at": project_payload["updated_at"],
+    }
+
+
+def _job_insert_payload(
+    *,
+    job_id: str,
+    project_id: str,
+    tenant_id: str,
+    credits: int,
+    payload: RenderRequest,
+) -> dict[str, Any]:
+    return {
+        "id": job_id,
+        "project_id": project_id,
+        "tenant_id": tenant_id,
+        "status": "queued",
+        "progress": 0,
+        "credits_charged": credits,
+        "pipeline_state": _initial_pipeline_state(payload),
+    }
+
+
 def _initial_pipeline_state(payload: RenderRequest) -> dict[str, Any]:
     return {
         "stage": "queued",
@@ -79,27 +141,76 @@ async def create_render_job(
     project_config = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
 
     client.table("projects").upsert(
-        {
-            "id": project_id,
-            "tenant_id": user.tenant_id,
-            "user_id": user.user_id,
-            "title": _project_title(payload),
-            "status": "queued",
-            "workflow": payload.workflow.value,
-            "config": project_config,
-            "updated_at": now,
-        }
+        _project_upsert_payload(
+            project_id=project_id,
+            tenant_id=user.tenant_id,
+            user_id=user.user_id,
+            payload=payload,
+            now=now,
+        )
     ).execute()
     client.table("jobs").insert(
-        {
-            "id": job_id,
-            "project_id": project_id,
-            "tenant_id": user.tenant_id,
-            "status": "queued",
-            "progress": 0,
-            "credits_charged": credits,
-            "pipeline_state": _initial_pipeline_state(payload),
-        }
+        _job_insert_payload(
+            job_id=job_id,
+            project_id=project_id,
+            tenant_id=user.tenant_id,
+            credits=credits,
+            payload=payload,
+        )
+    ).execute()
+
+    return {
+        "project_id": project_id,
+        "job_id": job_id,
+        "tenant_id": user.tenant_id,
+        "workflow": payload.workflow.value,
+        "credits": credits,
+        "created_at": now,
+        "config": project_config,
+        "pipeline_state": _initial_pipeline_state(payload),
+    }
+
+
+async def create_project_version_job(
+    user: AuthenticatedUser,
+    project_id: str,
+    payload: RenderRequest,
+    credits: int,
+) -> dict[str, Any]:
+    ensure_user_workspace(user)
+
+    client = get_supabase_client()
+    project_response = (
+        client.table("projects")
+        .select("id")
+        .eq("id", project_id)
+        .eq("tenant_id", user.tenant_id)
+        .limit(1)
+        .execute()
+    )
+    if not project_response.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
+
+    now = _iso()
+    job_id = str(uuid4())
+    project_config = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+    client.table("projects").update(
+        _project_update_payload(
+            user_id=user.user_id,
+            payload=payload,
+            now=now,
+        )
+    ).eq("id", project_id).eq("tenant_id", user.tenant_id).execute()
+
+    client.table("jobs").insert(
+        _job_insert_payload(
+            job_id=job_id,
+            project_id=project_id,
+            tenant_id=user.tenant_id,
+            credits=credits,
+            payload=payload,
+        )
     ).execute()
 
     return {
